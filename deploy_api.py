@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, Form, File
+from fastapi import FastAPI, UploadFile, Form, File, HTTPException
 from hivision import IDCreator
 from hivision.error import FaceError
 from hivision.creator.layout_calculator import (
@@ -28,6 +28,28 @@ MultiPartParser.max_file_size = 20 * 1024 * 1024   # 20MB
 app = FastAPI()
 creator = IDCreator()
 
+HUMAN_MATTING_MODEL = "modnet_photographic_portrait_matting"
+FACE_DETECT_MODEL = "mtcnn"
+
+
+def require_lightweight_models(human_matting_model=None, face_detect_model=None):
+    """Keep this Railway test service local, CPU-only, and free of online APIs."""
+    if human_matting_model is not None and human_matting_model != HUMAN_MATTING_MODEL:
+        raise HTTPException(
+            status_code=400,
+            detail=f"This deployment only supports {HUMAN_MATTING_MODEL}.",
+        )
+    if face_detect_model is not None and face_detect_model != FACE_DETECT_MODEL:
+        raise HTTPException(
+            status_code=400,
+            detail=f"This deployment only supports {FACE_DETECT_MODEL}.",
+        )
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "hivision-idphoto-api"}
+
 # 添加 CORS 中间件 解决跨域问题
 app.add_middleware(
     CORSMiddleware,
@@ -47,8 +69,8 @@ async def idphoto_inference(
     input_image_base64: str = Form(None),
     height: int = Form(413),
     width: int = Form(295),
-    human_matting_model: str = Form("modnet_photographic_portrait_matting"),
-    face_detect_model: str = Form("mtcnn"),
+    human_matting_model: str = Form(HUMAN_MATTING_MODEL),
+    face_detect_model: str = Form(FACE_DETECT_MODEL),
     hd: bool = Form(True),
     dpi: int = Form(300),
     face_align: bool = Form(False),
@@ -62,6 +84,7 @@ async def idphoto_inference(
     sharpen_strength: float = Form(0),
     saturation_strength: float = Form(0),
 ):  
+    require_lightweight_models(human_matting_model, face_detect_model)
     # 如果传入了base64，则直接使用base64解码
     if input_image_base64:
         img = base64_2_numpy(input_image_base64)
@@ -116,9 +139,10 @@ async def idphoto_inference(
 async def human_matting_inference(
     input_image: UploadFile = File(None),
     input_image_base64: str = Form(None),
-    human_matting_model: str = Form("hivision_modnet"),
+    human_matting_model: str = Form(HUMAN_MATTING_MODEL),
     dpi: int = Form(300),
 ):
+    require_lightweight_models(human_matting_model=human_matting_model)
     if input_image_base64:
         img = base64_2_numpy(input_image_base64)
     else:
@@ -318,7 +342,7 @@ async def idphoto_crop_inference(
     input_image_base64: str = Form(None),
     height: int = Form(413),
     width: int = Form(295),
-    face_detect_model: str = Form("mtcnn"),
+    face_detect_model: str = Form(FACE_DETECT_MODEL),
     hd: bool = Form(True),
     dpi: int = Form(300),
     head_measure_ratio: float = Form(0.2),
@@ -326,6 +350,7 @@ async def idphoto_crop_inference(
     top_distance_max: float = Form(0.12),
     top_distance_min: float = Form(0.10),
 ):
+    require_lightweight_models(face_detect_model=face_detect_model)
     if input_image_base64:
         img = base64_2_numpy(input_image_base64)
     else:

@@ -1,7 +1,11 @@
-opencv-python>=4.8.1.78
+opencv-python-headless==4.11.0.86
 onnxruntime>=1.15.0
 numpy<=1.26.4
+Pillow
 requests
-mtcnn-runtime
+# mtcnn-runtime==1.0.0 is installed with --no-deps in Dockerfile so it reuses
+# headless OpenCV instead of pulling the desktop OpenCV package.
 tqdm
-starlette
+fastapi
+uvicorn
+python-multipart

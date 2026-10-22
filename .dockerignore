@@ -1,0 +1,17 @@
+.git
+.github
+.devcontainer
+.vscode
+
+__pycache__/
+*.py[cod]
+*.onnx
+*.mnn
+
+.env
+.env.*
+
+assets/
+demo/
+docs/
+test/
